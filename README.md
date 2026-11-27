@@ -53,3 +53,13 @@ Body text…
 - Every fact comes from a source listed in `sources:`. Prefer official sources (GOV.UK, IRCC, CBN, travel.state.gov) for rules and figures.
 - No made-up quotes, and nothing defamatory. When a story names private people accused of wrongdoing, leave their names out.
 - Immigration and money posts end with a one-line "general information, not advice" note.
+
+## Daily email (digest.json)
+
+Each morning the writing agent also overwrites `digest.json`:
+
+```json
+{"date": "2026-11-28", "subject": "Under 60 characters", "preview": "Under 120 characters", "intro": "2–4 friendly sentences, plain text.", "signoff": "One short closing line."}
+```
+
+At 08:30 UK time the GistDew Autopost plugin builds an email from the last 24 hours of posts, uses this copy if `date` is today (otherwise a plain default), and schedules it in SendFox to the GistDew Daily Digest list.
