@@ -34,6 +34,7 @@ category: Japa & Visas
 tags: UK, visas
 excerpt: One or two sentences shown on the home page and in Google.
 sources: Source title|https://example.com/page; Another source|https://example.org/
+photo: London street rain
 ---
 **Quick gist:** The two-line summary. It becomes the highlighted box at the top.
 
@@ -42,11 +43,13 @@ sources: Source title|https://example.com/page; Another source|https://example.o
 Body text…
 ```
 
+**Photo:** a few plain words describing a stock photo (no celebrity names). The site finds a free, commercially licensed photo on Openverse and credits the photographer under the image. Leave it out to use the generated cover card instead.
+
 **Categories:** Japa & Visas · Money · Naija News · Entertainment · Diaspora Life · Jobs & Careers · Sports
 
 ## Rules for every post
 
-- Original writing only. Never copy another site's article, and never use photos from news sites. The cover images are generated.
+- Original writing only. Never copy another site's article, and never use photos from news sites. Photos come from Openverse (CC0, public domain or CC BY only) and are credited; the generated cover card is the fallback.
 - Every fact comes from a source listed in `sources:`. Prefer official sources (GOV.UK, IRCC, CBN, travel.state.gov) for rules and figures.
 - No made-up quotes, and nothing defamatory. When a story names private people accused of wrongdoing, leave their names out.
 - Immigration and money posts end with a one-line "general information, not advice" note.

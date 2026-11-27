@@ -54,6 +54,7 @@ def parse_file(path):
             "title": meta["title"], "slug": meta["slug"], "category": meta["category"],
             "tags": [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
             "excerpt": meta.get("excerpt", ""), "sources": sources, "body": body.strip(),
+            "photo_query": meta.get("photo", ""),
         })
     return posts
 
@@ -174,7 +175,7 @@ def main():
         existing = json.load(open(feed_path, encoding="utf-8")).get("posts", [])
     new_slugs = {p["slug"] for p in posts}
     keep = [p for p in existing if p["slug"] not in new_slugs]
-    out_posts = [{k: p[k] for k in ("id", "slug", "title", "date", "category", "category_slug", "tags", "excerpt", "content", "image", "image_alt", "sources")} for p in posts] + keep
+    out_posts = [{k: p[k] for k in ("id", "slug", "title", "date", "category", "category_slug", "tags", "excerpt", "content", "image", "image_alt", "sources", "photo_query")} for p in posts] + keep
     out_posts.sort(key=lambda p: p["date"], reverse=True)
     feed = {"version": 1, "generated": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), "posts": out_posts[:60]}
     json.dump(feed, open(feed_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
