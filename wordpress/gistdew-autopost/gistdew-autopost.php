@@ -358,7 +358,8 @@ function gdap_refresh_photos( $limit = 6, $redo = array() ) {
 			}
 		}
 	}
-	$s = gdap_settings();
+	$launch = $queries; // the bundled launch pack wins for its own posts (GitHub's CDN can lag)
+	$s      = gdap_settings();
 	if ( $s['feed_url'] ) {
 		$res = wp_remote_get( add_query_arg( 't', time(), $s['feed_url'] ), array( 'timeout' => 20 ) );
 		$d   = is_wp_error( $res ) ? null : json_decode( wp_remote_retrieve_body( $res ), true );
@@ -366,8 +367,9 @@ function gdap_refresh_photos( $limit = 6, $redo = array() ) {
 			$feed_problem = is_wp_error( $res ) ? $res->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ', JSON error: ' . json_last_error_msg();
 		}
 		foreach ( (array) ( $d['posts'] ?? array() ) as $p ) {
-			if ( ! empty( $p['photo_query'] ) ) {
-				$queries[ sanitize_title( $p['id'] ) ] = sanitize_text_field( $p['photo_query'] );
+			$k = sanitize_title( $p['id'] );
+			if ( ! empty( $p['photo_query'] ) && ! isset( $launch[ $k ] ) ) {
+				$queries[ $k ] = sanitize_text_field( $p['photo_query'] );
 			}
 		}
 	}
