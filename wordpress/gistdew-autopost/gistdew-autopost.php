@@ -527,7 +527,7 @@ function gdap_handle_action() {
 	if ( 'launch' === $what ) {
 		$r = gdap_import_launch_pack();
 	} elseif ( 'photos' === $what ) {
-		$r = gdap_refresh_photos( 6 );
+		$r = gdap_refresh_photos( 3 );
 	} elseif ( 'redo' === $what ) {
 		$r = gdap_refresh_photos( 1, array( absint( $_POST['gdap_post'] ?? 0 ) ) );
 	} elseif ( 'pages' === $what ) {
@@ -611,7 +611,7 @@ function gdap_page() {
 		</form>
 
 		<h2 style="margin-top:30px">3. Stock photos</h2>
-		<p>Swaps the cover cards for free, commercially licensed photos from <a href="https://openverse.org" target="_blank" rel="noopener">Openverse</a> (CC0, public domain or CC BY), credited under each photo. Does 6 posts per click.</p>
+		<p>Swaps the cover cards for free, commercially licensed photos from <a href="https://openverse.org" target="_blank" rel="noopener">Openverse</a> (CC0, public domain or CC BY), credited under each photo. Does 3 posts per click.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="gdap_action"><input type="hidden" name="gdap_do" value="photos">
 			<?php wp_nonce_field( 'gdap_action' ); ?>
