@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GistDew Autopost
  * Description: Imports GistDew posts (with cover images and categories) from the bundled launch pack and from your daily GitHub content feed.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      GistDew
  * License:     GPL-2.0-or-later
  * Text Domain: gistdew-autopost
@@ -12,12 +12,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GDAP_VERSION', '1.1.0' );
+define( 'GDAP_VERSION', '1.2.0' );
 define( 'GDAP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GDAP_MAX_PER_RUN', 10 );
 define( 'GDAP_PHOTOS_PER_RUN', 2 ); // more photos are added by the hourly check
 
 require_once GDAP_DIR . 'pages.php';
+require_once GDAP_DIR . 'digest.php';
 
 /* ------------------------------------------------------------------ *
  * Settings
@@ -65,6 +66,7 @@ function gdap_activate() {
 register_deactivation_hook( __FILE__, 'gdap_deactivate' );
 function gdap_deactivate() {
 	wp_clear_scheduled_hook( 'gdap_check_feed' );
+	wp_clear_scheduled_hook( 'gdap_digest_tick' );
 }
 
 /* ------------------------------------------------------------------ *
@@ -536,6 +538,8 @@ function gdap_handle_action() {
 		$r = gdap_refresh_photos( 3 );
 	} elseif ( 'redo' === $what ) {
 		$r = gdap_refresh_photos( 1, array( absint( $_POST['gdap_post'] ?? 0 ) ) );
+	} elseif ( 'digest' === $what ) {
+		$r = gdap_send_digest();
 	} elseif ( 'pages' === $what ) {
 		$email = gdap_settings()['email'] ? gdap_settings()['email'] : get_option( 'admin_email' );
 		$r     = gdap_create_pages( $email, ! empty( $_POST['gdap_overwrite'] ) );
@@ -549,6 +553,7 @@ function gdap_handle_action() {
 		'photos' => 'ok:%d posts got a new photo, %d still to do (click again).',
 		'redo'   => 'ok:%d post got a different photo.%.0s',
 		'pages'  => 'ok:%d pages created or updated, %d already there.',
+		'digest' => 'ok:Today\'s digest with %d stories is scheduled in SendFox (sends in about 5 minutes).%.0s',
 	)[ $what ] ?? 'ok:%d new posts imported, %d already on the site.';
 	$msg = is_wp_error( $r ) ? 'err:' . $r->get_error_message() : sprintf( $fmt, $r['added'], $r['skipped'] ) . ( $r['errors'] ? ' Problems: ' . implode( ' | ', array_slice( $r['errors'], 0, 3 ) ) : '' );
 	set_transient( 'gdap_notice', $msg, 60 );
@@ -638,6 +643,7 @@ function gdap_page() {
 			<label><input type="checkbox" name="gdap_overwrite" value="1"> Overwrite existing versions of these pages</label><br><br>
 			<?php submit_button( 'Create site pages', 'secondary', 'gdap_pages', false ); ?>
 		</form>
+		<?php gdap_digest_admin_section(); ?>
 	</div>
 	<?php
 }
