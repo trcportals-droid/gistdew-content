@@ -3,7 +3,7 @@ Theme Name: GistDew
 Theme URI: https://gistdew.com
 Author: GistDew
 Description: Fast, mobile-first news and gist theme for diaspora stories. Breaking-news ticker, featured grid, category blocks, trending sidebar, daily digest signup, ad slots and dark mode.
-Version: 1.0.1
+Version: 1.0.2
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -313,3 +313,9 @@ a.thumb:hover img{transform:scale(1.04)}
 .aligncenter{margin-left:auto;margin-right:auto}
 .wp-caption-text,.wp-element-caption{font-size:13px;color:var(--muted)}
 .sticky,.bypostauthor,.gallery-caption{}
+
+/* About this article */
+.article-about{margin:28px 0 8px;padding:16px 18px;border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;background:var(--surface);font-size:15px}
+.article-about p{margin:0 0 6px}
+.article-about .aa-head{font-size:14px;color:var(--ink-2)}
+.article-about .aa-links{margin:0;font-size:14px}

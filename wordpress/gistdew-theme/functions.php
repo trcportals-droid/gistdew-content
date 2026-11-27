@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GISTDEW_VERSION', '1.0.1' );
+define( 'GISTDEW_VERSION', '1.0.2' );
 
 /* ------------------------------------------------------------------ *
  * Setup
@@ -379,4 +379,120 @@ function gistdew_home_categories() {
 	}
 	$others = get_categories( array( 'hide_empty' => true, 'exclude' => array_merge( wp_list_pluck( $out, 'term_id' ), array( (int) get_option( 'default_category' ) ) ) ) );
 	return array_merge( $out, $others );
+}
+
+/* ------------------------------------------------------------------ *
+ * Share previews (WhatsApp, Facebook, X, Telegram, LinkedIn).
+ * Each post gets a 1200x630 JPG made from its featured image, because
+ * some apps won't show WebP or very large images.
+ * ------------------------------------------------------------------ */
+function gistdew_share_image( $post_id ) {
+	$att = (int) get_post_thumbnail_id( $post_id );
+	if ( ! $att ) {
+		return '';
+	}
+	$up   = wp_upload_dir();
+	$dir  = trailingslashit( $up['basedir'] ) . 'gistdew-share';
+	$name = $att . '-' . (int) get_post_modified_time( 'U', true, $att ) . '.jpg';
+	if ( file_exists( "$dir/$name" ) ) {
+		return trailingslashit( $up['baseurl'] ) . 'gistdew-share/' . $name;
+	}
+	$src = get_attached_file( $att );
+	if ( ! $src || ! file_exists( $src ) ) {
+		return '';
+	}
+	wp_mkdir_p( $dir );
+	$ed = wp_get_image_editor( $src );
+	if ( is_wp_error( $ed ) ) {
+		return '';
+	}
+	$ed->resize( 1200, 630, true );
+	$ed->set_quality( 80 );
+	$saved = $ed->save( "$dir/$name", 'image/jpeg' );
+	if ( is_wp_error( $saved ) ) {
+		return '';
+	}
+	return trailingslashit( $up['baseurl'] ) . 'gistdew-share/' . $name;
+}
+
+add_action( 'wp_head', 'gistdew_share_tags', 5 );
+function gistdew_share_tags() {
+	$site  = get_bloginfo( 'name' );
+	$title = $site;
+	$desc  = get_bloginfo( 'description' );
+	$url   = home_url( '/' );
+	$img   = get_template_directory_uri() . '/assets/share-default.jpg';
+	$type  = 'website';
+	if ( is_singular() ) {
+		$id    = get_queried_object_id();
+		$title = wp_strip_all_tags( get_the_title( $id ) );
+		$ex    = get_the_excerpt( $id );
+		$desc  = $ex ? wp_strip_all_tags( $ex ) : $desc;
+		$url   = get_permalink( $id );
+		$share = gistdew_share_image( $id );
+		$img   = $share ? $share : $img;
+		$type  = is_single() ? 'article' : 'website';
+	} elseif ( is_category() ) {
+		$t     = get_queried_object();
+		$title = $t->name . ' – ' . $site;
+		$desc  = $t->description ? $t->description : $desc;
+		$url   = get_category_link( $t );
+	}
+	$desc = wp_html_excerpt( $desc, 200, '…' );
+	$tags = array(
+		'og:site_name'   => $site,
+		'og:type'        => $type,
+		'og:title'       => $title,
+		'og:description' => $desc,
+		'og:url'         => $url,
+		'og:image'       => $img,
+		'og:image:width' => '1200',
+		'og:image:height' => '630',
+		'og:locale'      => 'en_GB',
+	);
+	foreach ( $tags as $k => $v ) {
+		echo '<meta property="' . esc_attr( $k ) . '" content="' . esc_attr( $v ) . '">' . "\n";
+	}
+	if ( is_single() ) {
+		echo '<meta property="article:published_time" content="' . esc_attr( get_the_date( 'c' ) ) . '">' . "\n";
+		echo '<meta property="article:modified_time" content="' . esc_attr( get_the_modified_date( 'c' ) ) . '">' . "\n";
+	}
+	echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
+	echo '<meta name="twitter:title" content="' . esc_attr( $title ) . '">' . "\n";
+	echo '<meta name="twitter:description" content="' . esc_attr( $desc ) . '">' . "\n";
+	echo '<meta name="twitter:image" content="' . esc_attr( $img ) . '">' . "\n";
+	echo '<meta name="description" content="' . esc_attr( $desc ) . '">' . "\n";
+}
+
+/* ------------------------------------------------------------------ *
+ * "About this article" box at the end of each post: who writes it,
+ * how it's checked and when it was last updated (trust signals for
+ * readers and for Google/AdSense reviewers).
+ * ------------------------------------------------------------------ */
+add_filter( 'the_content', 'gistdew_article_footer', 20 );
+function gistdew_article_footer( $content ) {
+	if ( ! is_singular( 'post' ) || ! in_the_loop() || ! is_main_query() ) {
+		return $content;
+	}
+	$author  = get_the_author_meta( 'display_name' );
+	$bio     = get_the_author_meta( 'description' );
+	$bio     = $bio ? $bio : 'GistDew is written for Nigerians and Africans abroad. We check every story against official sources and update guides when rules change.';
+	$edit    = get_page_by_path( 'editorial-policy' );
+	$contact = get_page_by_path( 'contact' );
+	$updated = ( get_the_modified_time( 'U' ) - get_the_time( 'U' ) > DAY_IN_SECONDS ) ? ' · Updated ' . esc_html( get_the_modified_date() ) : '';
+	$out  = '<aside class="article-about" aria-label="About this article">';
+	$out .= '<p class="aa-head"><strong>' . esc_html( $author ) . '</strong> · Published ' . esc_html( get_the_date() ) . $updated . '</p>';
+	$out .= '<p>' . esc_html( $bio ) . '</p>';
+	$links = array();
+	if ( $edit ) {
+		$links[] = '<a href="' . esc_url( get_permalink( $edit ) ) . '">How we check facts</a>';
+	}
+	if ( $contact ) {
+		$links[] = '<a href="' . esc_url( get_permalink( $contact ) ) . '">Report an error</a>';
+	}
+	if ( $links ) {
+		$out .= '<p class="aa-links">' . implode( ' · ', $links ) . '</p>';
+	}
+	$out .= '</aside>';
+	return $content . $out;
 }
