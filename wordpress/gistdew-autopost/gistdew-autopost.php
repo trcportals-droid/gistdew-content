@@ -338,6 +338,9 @@ function gdap_refresh_photos( $limit = 6, $redo = array() ) {
 	if ( $s['feed_url'] ) {
 		$res = wp_remote_get( add_query_arg( 't', time(), $s['feed_url'] ), array( 'timeout' => 20 ) );
 		$d   = is_wp_error( $res ) ? null : json_decode( wp_remote_retrieve_body( $res ), true );
+		if ( ! is_array( $d ) ) {
+			$feed_problem = is_wp_error( $res ) ? $res->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ', JSON error: ' . json_last_error_msg();
+		}
 		foreach ( (array) ( $d['posts'] ?? array() ) as $p ) {
 			if ( ! empty( $p['photo_query'] ) ) {
 				$queries[ sanitize_title( $p['id'] ) ] = sanitize_text_field( $p['photo_query'] );
@@ -375,6 +378,9 @@ function gdap_refresh_photos( $limit = 6, $redo = array() ) {
 			update_post_meta( $pid, '_gdap_photo_q', $queries[ $gid ] ); // don't retry forever
 		}
 		$done++;
+	}
+	if ( ! $done && ! $left ) {
+		$errors[] = sprintf( 'Found %d photo phrases.', count( $queries ) ) . ( isset( $feed_problem ) ? ' Feed problem: ' . $feed_problem : '' );
 	}
 	return array( 'added' => $done, 'skipped' => $left, 'errors' => $errors );
 }
