@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GistDew Autopost
  * Description: Imports GistDew posts (with cover images and categories) from the bundled launch pack and from your daily GitHub content feed.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      GistDew
  * License:     GPL-2.0-or-later
  * Text Domain: gistdew-autopost
@@ -19,6 +19,7 @@ define( 'GDAP_PHOTOS_PER_RUN', 2 ); // more photos are added by the hourly check
 
 require_once GDAP_DIR . 'pages.php';
 require_once GDAP_DIR . 'digest.php';
+require_once GDAP_DIR . 'whatsapp.php';
 
 /* ------------------------------------------------------------------ *
  * Settings
@@ -644,6 +645,7 @@ function gdap_page() {
 			<?php submit_button( 'Create site pages', 'secondary', 'gdap_pages', false ); ?>
 		</form>
 		<?php gdap_digest_admin_section(); ?>
+		<?php gdap_wa_admin_section(); ?>
 	</div>
 	<?php
 }
