@@ -14,7 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'GDAP_VERSION', '1.1.0' );
 define( 'GDAP_DIR', plugin_dir_path( __FILE__ ) );
-define( 'GDAP_MAX_PER_RUN', 12 );
+define( 'GDAP_MAX_PER_RUN', 10 );
+define( 'GDAP_PHOTOS_PER_RUN', 2 ); // more photos are added by the hourly check
 
 require_once GDAP_DIR . 'pages.php';
 
@@ -95,6 +96,7 @@ function gdap_import( $feed, $base, $local, $status ) {
 	}
 
 	$added = 0;
+	$photos = 0;
 	$skipped = 0;
 	$errors = array();
 
@@ -159,7 +161,8 @@ function gdap_import( $feed, $base, $local, $status ) {
 
 		// Stock photo first (Openverse), generated cover card as fallback.
 		$photo_q = sanitize_text_field( $p['photo_query'] ?? '' );
-		if ( $photo_q ) {
+		if ( $photo_q && $photos < GDAP_PHOTOS_PER_RUN ) {
+			$photos++;
 			$att = gdap_attach_photo( $photo_q, $post_id );
 			if ( ! is_wp_error( $att ) ) {
 				$added++;
@@ -450,6 +453,9 @@ function gdap_check_feed() {
 		return gdap_log_error( $result->get_error_message() );
 	}
 	update_option( 'gdap_last_check', array( 'time' => time(), 'added' => $result['added'], 'errors' => $result['errors'] ), false );
+	if ( wp_doing_cron() ) {
+		gdap_refresh_photos( 3 ); // swap cover cards for stock photos, a few each hour
+	}
 	delete_option( 'gdap_last_error' );
 	return $result;
 }
