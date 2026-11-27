@@ -177,9 +177,9 @@ def main():
     keep = [p for p in existing if p["slug"] not in new_slugs]
     out_posts = [{k: p[k] for k in ("id", "slug", "title", "date", "category", "category_slug", "tags", "excerpt", "content", "image", "image_alt", "sources", "photo_query")} for p in posts] + keep
     out_posts.sort(key=lambda p: p["date"], reverse=True)
-    feed = {"version": 1, "generated": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), "posts": out_posts[:60]}
+    feed = {"version": 1, "generated": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), "posts": out_posts[:150]}
     json.dump(feed, open(feed_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"wrote {len(posts)} posts ({len(out_posts[:60])} in feed) to {feed_path}")
+    print(f"wrote {len(posts)} posts ({len(out_posts[:150])} in feed) to {feed_path}")
 
 
 if __name__ == "__main__":
