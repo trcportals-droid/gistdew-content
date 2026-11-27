@@ -19,7 +19,6 @@ define( 'GDAP_PHOTOS_PER_RUN', 2 ); // more photos are added by the hourly check
 
 require_once GDAP_DIR . 'pages.php';
 require_once GDAP_DIR . 'digest.php';
-require_once GDAP_DIR . 'whatsapp.php';
 
 /* ------------------------------------------------------------------ *
  * Settings
@@ -645,7 +644,6 @@ function gdap_page() {
 			<?php submit_button( 'Create site pages', 'secondary', 'gdap_pages', false ); ?>
 		</form>
 		<?php gdap_digest_admin_section(); ?>
-		<?php gdap_wa_admin_section(); ?>
 	</div>
 	<?php
 }
