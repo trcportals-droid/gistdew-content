@@ -231,41 +231,55 @@ function gdap_attach_remote( $url, $post_id ) {
  * Free stock photos from Openverse (CC0, public domain, CC BY only),
  * credited under the image.
  * ------------------------------------------------------------------ */
-function gdap_find_photo( $query, $skip = array() ) {
-	$url = add_query_arg(
-		array(
-			'q'            => rawurlencode( $query ),
-			'license'      => 'cc0,pdm,by',
-			'category'     => 'photograph',
-			'aspect_ratio' => 'wide',
-			'size'         => 'large',
-			'mature'       => 'false',
-			'page_size'    => 20,
-		),
-		'https://api.openverse.org/v1/images/'
+function gdap_find_photos( $query, $skip = array() ) {
+	$passes = array(
+		array( 'aspect_ratio' => 'wide', 'size' => 'large' ),
+		array( 'aspect_ratio' => 'wide' ),
+		array(),
 	);
-	$res = wp_remote_get( $url, array( 'timeout' => 20, 'headers' => array( 'User-Agent' => 'GistDew/' . GDAP_VERSION . ' (+' . home_url( '/' ) . ')' ) ) );
-	if ( is_wp_error( $res ) ) {
-		return $res;
-	}
-	if ( 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
-		return new WP_Error( 'gdap_ov', 'Openverse returned HTTP ' . (int) wp_remote_retrieve_response_code( $res ) . '.' );
-	}
-	$data = json_decode( wp_remote_retrieve_body( $res ), true );
-	foreach ( (array) ( $data['results'] ?? array() ) as $r ) {
-		$u = (string) ( $r['url'] ?? '' );
-		if ( 0 !== stripos( $u, 'https://' ) || in_array( $r['id'] ?? '', $skip, true ) ) {
+	$found = array();
+	$last  = null;
+	foreach ( $passes as $extra ) {
+		$url = add_query_arg(
+			array_merge(
+				array(
+					'q'         => rawurlencode( $query ),
+					'license'   => 'cc0,pdm,by',
+					'category'  => 'photograph',
+					'mature'    => 'false',
+					'page_size' => 20,
+				),
+				$extra
+			),
+			'https://api.openverse.org/v1/images/'
+		);
+		$res = wp_remote_get( $url, array( 'timeout' => 20, 'headers' => array( 'User-Agent' => 'GistDew/' . GDAP_VERSION . ' (+' . home_url( '/' ) . ')' ) ) );
+		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			$last = is_wp_error( $res ) ? $res : new WP_Error( 'gdap_ov', 'Openverse returned HTTP ' . (int) wp_remote_retrieve_response_code( $res ) . '.' );
 			continue;
 		}
-		if ( ! preg_match( '/\.(jpe?g|png|webp)(\?.*)?$/i', $u ) && ! in_array( strtolower( (string) ( $r['filetype'] ?? '' ) ), array( 'jpg', 'jpeg', 'png', 'webp' ), true ) ) {
-			continue;
+		$data = json_decode( wp_remote_retrieve_body( $res ), true );
+		foreach ( (array) ( $data['results'] ?? array() ) as $r ) {
+			$u = (string) ( $r['url'] ?? '' );
+			if ( 0 !== stripos( $u, 'https://' ) || in_array( $r['id'] ?? '', $skip, true ) || isset( $found[ $r['id'] ?? $u ] ) ) {
+				continue;
+			}
+			if ( ! preg_match( '/\.(jpe?g|png|webp)(\?.*)?$/i', $u ) && ! in_array( strtolower( (string) ( $r['filetype'] ?? '' ) ), array( 'jpg', 'jpeg', 'png', 'webp' ), true ) ) {
+				continue;
+			}
+			if ( ! empty( $r['width'] ) && ( (int) $r['width'] < 900 || (int) $r['width'] < (int) ( $r['height'] ?? 0 ) ) ) {
+				continue; // too small, or portrait
+			}
+			$found[ $r['id'] ?? $u ] = $r;
 		}
-		if ( ! empty( $r['width'] ) && (int) $r['width'] < 1000 ) {
-			continue;
+		if ( count( $found ) >= 6 ) {
+			break;
 		}
-		return $r;
 	}
-	return new WP_Error( 'gdap_ov_none', 'No suitable free photo found for "' . $query . '".' );
+	if ( $found ) {
+		return array_values( $found );
+	}
+	return $last ? $last : new WP_Error( 'gdap_ov_none', 'No suitable free photo found for "' . $query . '".' );
 }
 
 function gdap_photo_credit( $r ) {
@@ -286,11 +300,21 @@ function gdap_attach_photo( $query, $post_id, $skip = array() ) {
 	require_once ABSPATH . 'wp-admin/includes/file.php';
 	require_once ABSPATH . 'wp-admin/includes/media.php';
 	require_once ABSPATH . 'wp-admin/includes/image.php';
-	$r = gdap_find_photo( $query, $skip );
-	if ( is_wp_error( $r ) ) {
-		return $r;
+	$cands = gdap_find_photos( $query, $skip );
+	if ( is_wp_error( $cands ) ) {
+		return $cands;
 	}
-	$tmp = download_url( $r['url'], 40 );
+	$tmp = new WP_Error( 'gdap_dl', 'Could not download any of the photos found.' );
+	foreach ( array_slice( $cands, 0, 6 ) as $r ) {
+		$tmp = download_url( $r['url'], 40 );
+		if ( ! is_wp_error( $tmp ) && wp_get_image_mime( $tmp ) ) {
+			break;
+		}
+		if ( ! is_wp_error( $tmp ) ) {
+			@unlink( $tmp ); // phpcs:ignore
+			$tmp = new WP_Error( 'gdap_dl', 'Downloaded file was not an image.' );
+		}
+	}
 	if ( is_wp_error( $tmp ) ) {
 		return $tmp;
 	}
@@ -375,7 +399,7 @@ function gdap_refresh_photos( $limit = 6, $redo = array() ) {
 		$r = gdap_attach_photo( $queries[ $gid ], $pid, $skip );
 		if ( is_wp_error( $r ) ) {
 			$errors[] = get_the_title( $pid ) . ': ' . $r->get_error_message();
-			update_post_meta( $pid, '_gdap_photo_q', $queries[ $gid ] ); // don't retry forever
+			update_post_meta( $pid, '_gdap_photo_q', $queries[ $gid ] ); // don't retry the same phrase forever; change the phrase to retry
 		}
 		$done++;
 	}
